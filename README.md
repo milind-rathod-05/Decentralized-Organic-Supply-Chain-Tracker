@@ -41,4 +41,4 @@ Seamless handoffs with instant proofs.
 - Report fakes to trigger audits in `audit-logger`.
 Empower your shopping with trust!
 
-Clarity-based decentralized supply chains: Trace every leaf, build unbreakable trust.
+Clarity-based decentralized supply chains: Trace every leaf, build unbreakable trust."# Decentralized-Organic-Supply-Chain-Tracker" 
