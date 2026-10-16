@@ -1,13 +1,156 @@
+# ==========================================
+# Clarinet & Stacks Blockchain Artifacts
+# ==========================================
+.cache/
+.clarinet/
+Clarinet.deps.json
+history.txt
+costs-reports.json
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
 
+# Clarinet Network Credentials & Settings (Private keys & testnet/mainnet configs)
 **/settings/Mainnet.toml
 **/settings/Testnet.toml
-.cache/**
-history.txt
+settings/Mainnet.toml
+settings/Testnet.toml
+settings/*.local.toml
 
-logs
+# Clarinet Deployment Plans with sensitive deployer keys
+deployments/*.testnet-plan.yaml
+deployments/*.mainnet-plan.yaml
+deployments/default.testnet-plan.yaml
+deployments/default.mainnet-plan.yaml
+
+# ==========================================
+# Dependencies & Package Managers
+# ==========================================
+node_modules/
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnpm-store/
+
+# ==========================================
+# Testing & Code Coverage
+# ==========================================
+coverage/
+*.lcov
+*.info
+lcov.info
+.nyc_output/
+.vitest/
+vitest-coverage/
+test-results/
+
+# ==========================================
+# Logs & Process Artifacts
+# ==========================================
+logs/
 *.log
 npm-debug.log*
-coverage
-*.info
-costs-reports.json
-node_modules
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.pid
+*.seed
+*.pid.lock
+
+# ==========================================
+# Environment Variables & Sensitive Secrets
+# ==========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*
+*.env
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.secret
+secrets.json
+
+# ==========================================
+# Build & Compilation Outputs
+# ==========================================
+dist/
+build/
+out/
+target/
+.next/
+.nuxt/
+*.tsbuildinfo
+.eslintcache
+.prettiercache
+.stylelintcache
+
+# ==========================================
+# IDE & Code Editors
+# ==========================================
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+
+# ==========================================
+# Operating System Junk Files
+# ==========================================
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Linux
+.directory
+
+# ==========================================
+# Local Scratch, Notes & Temporary Files
+# ==========================================
+commands.txt
+cmddddd.txt
+notes.txt
+todo.txt
+scratch.*
+scratch/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej

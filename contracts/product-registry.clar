@@ -43,6 +43,10 @@
     { batch-id: uint, owner-index: uint }
     principal
 )
+(define-map batch-owner-count
+    { batch-id: uint }
+    uint
+)
 (define-map certifications 
     { batch-id: uint }
     {
@@ -80,54 +84,54 @@
     (and (is-some (get-batch batch-id)) (get certified (unwrap-panic (get-batch batch-id))))
 )
 (define-private (validate-hash (h (string-ascii 64)))
-    (if (is-eq (len h) u64) (ok true) (err ERR-INVALID-HASH))
+    (if (is-eq (len h) u64) (ok true) ERR-INVALID-HASH)
 )
 (define-private (validate-title (t (string-ascii 100)))
-    (if (and (> (len t) u0) (<= (len t) u100)) (ok true) (err ERR-INVALID-TITLE))
+    (if (and (> (len t) u0) (<= (len t) u100)) (ok true) ERR-INVALID-TITLE)
 )
 (define-private (validate-desc (d (string-ascii 500)))
-    (if (and (> (len d) u0) (<= (len d) u500)) (ok true) (err ERR-INVALID-DESC))
+    (if (and (> (len d) u0) (<= (len d) u500)) (ok true) ERR-INVALID-DESC)
 )
 (define-private (validate-date (dt uint))
-    (if (> dt u0) (ok true) (err ERR-INVALID-DATE))
+    (if (> dt u0) (ok true) ERR-INVALID-DATE)
 )
 (define-private (validate-batch-size (bs uint))
-    (if (and (> bs u0) (<= bs u10000)) (ok true) (err ERR-INVALID-BATCH-SIZE))
+    (if (and (> bs u0) (<= bs u10000)) (ok true) ERR-INVALID-BATCH-SIZE)
 )
 (define-private (validate-cert-body (cb (string-ascii 50)))
-    (if (and (> (len cb) u0) (<= (len cb) u50)) (ok true) (err ERR-INVALID-CERT-BODY))
+    (if (and (> (len cb) u0) (<= (len cb) u50)) (ok true) ERR-INVALID-CERT-BODY)
 )
 (define-private (validate-geo (g (string-ascii 100)))
-    (if (and (> (len g) u0) (<= (len g) u100)) (ok true) (err ERR-INVALID-GEO))
+    (if (and (> (len g) u0) (<= (len g) u100)) (ok true) ERR-INVALID-GEO)
 )
 (define-private (validate-quality (q uint))
-    (if (<= q u100) (ok true) (err ERR-INVALID-QUALITY))
+    (if (<= q u100) (ok true) ERR-INVALID-QUALITY)
 )
 (define-private (validate-expiry (exp uint))
-    (if (> exp block-height) (ok true) (err ERR-EXPIRED-CERT))
+    (if (> exp block-height) (ok true) ERR-EXPIRED-CERT)
 )
 (define-private (validate-principal (p principal))
-    (if (not (is-eq p tx-sender)) (ok true) (err ERR-UNAUTHORIZED))
+    (if (not (is-eq p tx-sender)) (ok true) ERR-UNAUTHORIZED)
 )
 (define-public (set-authority-contract (contract-principal principal))
     (begin
-        (asserts! (is-none (var-get authority-contract)) (err ERR-AUTHORITY-NOT-SET))
+        (asserts! (is-none (var-get authority-contract)) ERR-AUTHORITY-NOT-SET)
         (var-set authority-contract (some contract-principal))
         (ok true)
     )
 )
 (define-public (set-max-batches (new-max uint))
     (begin
-        (asserts! (is-some (var-get authority-contract)) (err ERR-AUTHORITY-NOT-SET))
-        (asserts! (> new-max u0) (err ERR-MAX-BATCHES-EXCEEDED))
+        (asserts! (is-some (var-get authority-contract)) ERR-AUTHORITY-NOT-SET)
+        (asserts! (> new-max u0) ERR-MAX-BATCHES-EXCEEDED)
         (var-set max-batches new-max)
         (ok true)
     )
 )
 (define-public (set-registration-fee (new-fee uint))
     (begin
-        (asserts! (is-some (var-get authority-contract)) (err ERR-AUTHORITY-NOT-SET))
-        (asserts! (>= new-fee u0) (err ERR-INVALID-FEE))
+        (asserts! (is-some (var-get authority-contract)) ERR-AUTHORITY-NOT-SET)
+        (asserts! (>= new-fee u0) ERR-INVALID-FEE)
         (var-set registration-fee new-fee)
         (ok true)
     )
@@ -150,7 +154,7 @@
             (current-max (var-get max-batches))
             (authority (unwrap! (var-get authority-contract) ERR-AUTHORITY-NOT-SET))
         )
-        (asserts! (< next-id current-max) (err ERR-MAX-BATCHES-EXCEEDED))
+        (asserts! (< next-id current-max) ERR-MAX-BATCHES-EXCEEDED)
         (try! (validate-hash hash))
         (try! (validate-title title))
         (try! (validate-desc description))
@@ -159,7 +163,7 @@
         (try! (validate-cert-body cert-body))
         (try! (validate-geo geo-location))
         (try! (validate-quality quality-metric))
-        (asserts! (not (is-batch-registered next-id)) (err ERR-BATCH-EXISTS))
+        (asserts! (not (is-batch-registered next-id)) ERR-BATCH-EXISTS)
         (try! (stx-transfer? (var-get registration-fee) tx-sender authority))
         (map-set batches 
             { batch-id: next-id }
@@ -180,6 +184,7 @@
             }
         )
         (map-set batch-owners { batch-id: next-id, owner-index: u0 } caller)
+        (map-set batch-owner-count { batch-id: next-id } u1)
         (var-set last-batch-id next-id)
         (var-set total-registrations (+ (var-get total-registrations) u1))
         (print { event: "batch-registered", id: next-id })
@@ -192,7 +197,7 @@
             (batch (unwrap! (get-batch batch-id) ERR-BATCH-EXISTS))
             (caller tx-sender)
         )
-        (asserts! (not (get certified batch)) (err ERR-UNCERTIFIED-BATCH))
+        (asserts! (not (get certified batch)) ERR-UNCERTIFIED-BATCH)
         (try! (validate-hash cert-hash))
         (try! (validate-expiry expiry))
         (map-set batches 
@@ -218,8 +223,8 @@
             (cert (unwrap! (get-certification batch-id) ERR-CERT-NOT-FOUND))
             (caller tx-sender)
         )
-        (asserts! (is-eq caller (get issuer cert)) (err ERR-UNAUTHORIZED))
-        (asserts! (get certified batch) (err ERR-UNCERTIFIED-BATCH))
+        (asserts! (is-eq caller (get issuer cert)) ERR-UNAUTHORIZED)
+        (asserts! (get certified batch) ERR-UNCERTIFIED-BATCH)
         (map-set batches 
             { batch-id: batch-id }
             (merge batch { certified: false, cert-expiry: u0 })
@@ -238,7 +243,7 @@
             (batch (unwrap! (get-batch batch-id) ERR-BATCH-EXISTS))
             (caller tx-sender)
         )
-        (asserts! (is-eq caller (get farmer batch)) (err ERR-UNAUTHORIZED))
+        (asserts! (is-eq caller (get farmer batch)) ERR-UNAUTHORIZED)
         (try! (validate-title update-title))
         (try! (validate-desc update-desc))
         (map-set batches 
@@ -278,11 +283,13 @@
             (batch (unwrap! (get-batch batch-id) ERR-BATCH-EXISTS))
             (caller tx-sender)
             (current-owner (get farmer batch))
-            (new-index (+ u1 (fold while (lambda (i uint) (+ i u1)) u0 (lambda (ignored uint) (map-get? batch-owners { batch-id: batch-id, owner-index: ignored })))))
+            (current-count (default-to u1 (map-get? batch-owner-count { batch-id: batch-id })))
+            (new-index current-count)
         )
-        (asserts! (is-eq caller current-owner) (err ERR-UNAUTHORIZED))
-        (asserts! (is-eq (get status batch) true) (err ERR-INVALID-UPDATE))
+        (asserts! (is-eq caller current-owner) ERR-UNAUTHORIZED)
+        (asserts! (is-eq (get status batch) true) ERR-INVALID-UPDATE)
         (map-set batch-owners { batch-id: batch-id, owner-index: new-index } new-owner)
+        (map-set batch-owner-count { batch-id: batch-id } (+ current-count u1))
         (map-set batches 
             { batch-id: batch-id }
             (merge batch { farmer: new-owner })
@@ -296,7 +303,7 @@
             (batch (unwrap! (get-batch batch-id) ERR-BATCH-EXISTS))
             (caller tx-sender)
         )
-        (asserts! (is-eq caller (get farmer batch)) (err ERR-UNAUTHORIZED))
+        (asserts! (is-eq caller (get farmer batch)) ERR-UNAUTHORIZED)
         (map-set batches 
             { batch-id: batch-id }
             (merge batch { status: false })
@@ -321,7 +328,7 @@
         )
         (if (and (get certified batch) (is-some cert) (<= block-height (get expiry-date (unwrap-panic cert))))
             (ok true)
-            (err ERR-EXPIRED-CERT)
+            ERR-EXPIRED-CERT
         )
     )
 )

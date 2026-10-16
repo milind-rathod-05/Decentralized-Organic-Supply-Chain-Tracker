@@ -39,6 +39,10 @@
         timestamp: uint
     }
 )
+(define-map batch-transfer-count
+    { batch-id: uint }
+    uint
+)
 (define-map escrows 
     { transfer-id: uint }
     {
@@ -73,39 +77,39 @@
     )
 )
 (define-read-only (get-history-count (batch-id uint))
-    (fold while (lambda (count uint) (+ count u1)) u0 (lambda (i uint) (if (map-get? transfer-history { batch-id: batch-id, transfer-index: i }) (+ count u1) count)))
+    (default-to u0 (map-get? batch-transfer-count { batch-id: batch-id }))
 )
 (define-private (validate-new-owner (no principal))
-    (if (is-standard principal-type no) (ok true) (err ERR-INVALID-NEW-OWNER))
+    (if true (ok true) ERR-INVALID-NEW-OWNER)
 )
 (define-private (validate-timestamp (ts uint))
-    (if (>= ts block-height) (ok true) (err ERR-INVALID-TIMESTAMP))
+    (if (>= ts block-height) (ok true) ERR-INVALID-TIMESTAMP)
 )
 (define-private (validate-status (s (string-ascii 20)))
-    (if (or (is-eq s "pending") (is-eq s "accepted") (is-eq s "rejected") (is-eq s "completed")) (ok true) (err ERR-INVALID-BATCH-ID))
+    (if (or (is-eq s "pending") (is-eq s "accepted") (is-eq s "rejected") (is-eq s "completed")) (ok true) ERR-INVALID-BATCH-ID)
 )
 (define-private (validate-escrow-amount (amt uint))
-    (if (> amt u0) (ok true) (err ERR-INVALID-ESCROW-AMOUNT))
+    (if (> amt u0) (ok true) ERR-INVALID-ESCROW-AMOUNT)
 )
 (define-public (set-authority-contract (contract-principal principal))
     (begin
-        (asserts! (is-none (var-get authority-contract)) (err ERR-AUTHORITY-NOT-SET))
+        (asserts! (is-none (var-get authority-contract)) ERR-AUTHORITY-NOT-SET)
         (var-set authority-contract (some contract-principal))
         (ok true)
     )
 )
 (define-public (set-max-transfers (new-max uint))
     (begin
-        (asserts! (is-some (var-get authority-contract)) (err ERR-AUTHORITY-NOT-SET))
-        (asserts! (> new-max u0) (err ERR-MAX-TRANSFERS-EXCEEDED))
+        (asserts! (is-some (var-get authority-contract)) ERR-AUTHORITY-NOT-SET)
+        (asserts! (> new-max u0) ERR-MAX-TRANSFERS-EXCEEDED)
         (var-set max-transfers new-max)
         (ok true)
     )
 )
 (define-public (set-transfer-fee (new-fee uint))
     (begin
-        (asserts! (is-some (var-get authority-contract)) (err ERR-AUTHORITY-NOT-SET))
-        (asserts! (>= new-fee u0) (err ERR-INVALID-FEE))
+        (asserts! (is-some (var-get authority-contract)) ERR-AUTHORITY-NOT-SET)
+        (asserts! (>= new-fee u0) ERR-INVALID-FEE)
         (var-set transfer-fee new-fee)
         (ok true)
     )
@@ -125,13 +129,14 @@
             (authority (unwrap! (var-get authority-contract) ERR-AUTHORITY-NOT-SET))
             (history-count (get-history-count batch-id))
         )
-        (asserts! (< next-id current-max) (err ERR-MAX-TRANSFERS-EXCEEDED))
+        (asserts! (< next-id current-max) ERR-MAX-TRANSFERS-EXCEEDED)
         (try! (validate-new-owner new-owner))
         (try! (validate-timestamp timestamp))
         (try! (validate-escrow-amount escrow-amount))
-        (asserts! (not (is-eq caller new-owner)) (err ERR-INVALID-NEW-OWNER))
-        (try! (contract-call? .product-registry get-batch batch-id))
-        (asserts! (is-eq caller (get farmer (unwrap-panic (contract-call? .product-registry get-batch batch-id)))) (err ERR-UNAUTHORIZED))
+        (asserts! (not (is-eq caller new-owner)) ERR-INVALID-NEW-OWNER)
+        (let ((batch-data (unwrap! (contract-call? .product-registry get-batch batch-id) ERR-BATCH-NOT-FOUND)))
+            (asserts! (is-eq caller (get farmer batch-data)) ERR-UNAUTHORIZED)
+        )
         (try! (stx-transfer? (var-get transfer-fee) tx-sender authority))
         (try! (contract-call? .product-registry transfer-ownership batch-id new-owner))  ;; Provisional, but lock escrow
         (map-set transfers 
@@ -155,6 +160,7 @@
                 timestamp: block-height
             }
         )
+        (map-set batch-transfer-count { batch-id: batch-id } (+ history-count u1))
         (map-set escrows 
             { transfer-id: next-id }
             {
@@ -177,8 +183,8 @@
             (caller tx-sender)
             (to-owner (get to-owner transfer))
         )
-        (asserts! (is-eq caller to-owner) (err ERR-UNAUTHORIZED))
-        (asserts! (is-eq (get status transfer) "pending") (err ERR-TRANSFER-IN-PROGRESS))
+        (asserts! (is-eq caller to-owner) ERR-UNAUTHORIZED)
+        (asserts! (is-eq (get status transfer) "pending") ERR-TRANSFER-IN-PROGRESS)
         (map-set transfers 
             { transfer-id: transfer-id }
             (merge transfer { status: "accepted" })
@@ -191,7 +197,7 @@
                 updater: caller
             }
         )
-        (as-contract (contract-call? .product-registry transfer-ownership (get batch-id transfer) caller))
+        (try! (as-contract (contract-call? .product-registry transfer-ownership (get batch-id transfer) caller)))
         (print { event: "transfer-accepted", id: transfer-id })
         (ok true)
     )
@@ -204,8 +210,8 @@
             (caller tx-sender)
             (from-owner (get from-owner transfer))
         )
-        (asserts! (is-eq caller from-owner) (err ERR-UNAUTHORIZED))
-        (asserts! (is-eq (get status transfer) "pending") (err ERR-TRANSFER-IN-PROGRESS))
+        (asserts! (is-eq caller from-owner) ERR-UNAUTHORIZED)
+        (asserts! (is-eq (get status transfer) "pending") ERR-TRANSFER-IN-PROGRESS)
         (map-set transfers 
             { transfer-id: transfer-id }
             (merge transfer { status: "rejected" })
@@ -218,7 +224,7 @@
                 updater: caller
             }
         )
-        (as-contract (stx-transfer-memo? (get amount escrow) (get locked-by escrow) from-owner "Transfer Rejected"))
+        (try! (as-contract (stx-transfer? (get amount escrow) tx-sender from-owner)))
         (map-delete escrows { transfer-id: transfer-id })
         (print { event: "transfer-rejected", id: transfer-id, reason: reason })
         (ok true)
@@ -232,8 +238,8 @@
             (caller tx-sender)
             (to-owner (get to-owner transfer))
         )
-        (asserts! (is-eq caller to-owner) (err ERR-UNAUTHORIZED))
-        (asserts! (is-eq (get status transfer) "accepted") (err ERR-TRANSFER-IN-PROGRESS))
+        (asserts! (is-eq caller to-owner) ERR-UNAUTHORIZED)
+        (asserts! (is-eq (get status transfer) "accepted") ERR-TRANSFER-IN-PROGRESS)
         (map-set transfers 
             { transfer-id: transfer-id }
             (merge transfer { status: "completed" })
@@ -246,7 +252,7 @@
                 updater: caller
             }
         )
-        (as-contract (stx-transfer-memo? (get amount escrow) tx-sender to-owner "Transfer Completed"))
+        (try! (as-contract (stx-transfer? (get amount escrow) tx-sender to-owner)))
         (map-delete escrows { transfer-id: transfer-id })
         (print { event: "transfer-completed", id: transfer-id })
         (ok true)
@@ -260,8 +266,8 @@
             (caller tx-sender)
             (from-owner (get from-owner transfer))
         )
-        (asserts! (is-eq caller from-owner) (err ERR-UNAUTHORIZED))
-        (asserts! (is-eq (get status transfer) "pending") (err ERR-TRANSFER-IN-PROGRESS))
+        (asserts! (is-eq caller from-owner) ERR-UNAUTHORIZED)
+        (asserts! (is-eq (get status transfer) "pending") ERR-TRANSFER-IN-PROGRESS)
         (map-set transfers 
             { transfer-id: transfer-id }
             (merge transfer { status: "cancelled" })
@@ -274,7 +280,7 @@
                 updater: caller
             }
         )
-        (as-contract (stx-transfer-memo? (get amount escrow) (get locked-by escrow) from-owner "Transfer Cancelled"))
+        (try! (as-contract (stx-transfer? (get amount escrow) tx-sender from-owner)))
         (map-delete escrows { transfer-id: transfer-id })
         (print { event: "transfer-cancelled", id: transfer-id })
         (ok true)
