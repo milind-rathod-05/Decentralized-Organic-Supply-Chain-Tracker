@@ -42,3 +42,4 @@ Seamless handoffs with instant proofs.
 Empower your shopping with trust!
 
 Clarity-based decentralized supply chains: Trace every leaf, build unbreakable trust."# Decentralized-Organic-Supply-Chain-Tracker" 
+"# Decentralized-Organic-Supply-Chain-Tracker" 
